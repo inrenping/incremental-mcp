@@ -1,6 +1,6 @@
 from fastmcp import FastMCP
 
-from app.tools import data_tools
+from app.tools import data_tools, hello_tools
 
 mcp = FastMCP(
     "Incremental MCP Server",
@@ -14,6 +14,8 @@ mcp = FastMCP(
 mcp.tool()(data_tools.query_user_profile)
 mcp.tool()(data_tools.query_active_users)
 mcp.tool()(data_tools.query_db_stats)
+mcp.tool()(hello_tools.say_hello)
+mcp.tool()(hello_tools.server_info)
 
 # 创建可挂载的 ASGI 应用，使用 streamable-http（MCP 当前推荐协议）
 mcp_app = mcp.http_app(path="/", transport="streamable-http")
