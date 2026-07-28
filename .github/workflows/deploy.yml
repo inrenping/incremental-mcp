@@ -43,8 +43,19 @@ jobs:
             SUPABASE_SECRET_ACCESS_KEY=${SUPABASE_SECRET_ACCESS_KEY}
             EOF
 
-            echo ">>> 安装 Python 依赖..."
+            echo ">>> 创建/更新虚拟环境..."
+            if [ ! -d ".venv" ]; then
+              python3 -m venv .venv
+            fi
+            . .venv/bin/activate
+
+            echo ">>> 升级 pip 并安装 Python 依赖..."
+            pip install --upgrade pip
             pip install -e .
+
+            echo ">>> 更新 systemd 服务配置..."
+            cp deploy/incremental-mcp.service /etc/systemd/system/incremental-mcp.service
+            systemctl daemon-reload
 
             echo ">>> 重启服务..."
             systemctl restart incremental-mcp
