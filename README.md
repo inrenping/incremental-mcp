@@ -68,8 +68,6 @@ app/
 | Tool | 描述 |
 | --- | --- |
 | `query_user_profile` | 获取当前登录用户的基本信息（用户名、邮箱、会员状态等） |
-| `query_active_users` | 列出所有已激活的用户 |
-| `query_db_stats` | 查询用户统计（总数、激活数、VIP 用户数） |
 
 ## 本地开发
 

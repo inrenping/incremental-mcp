@@ -12,8 +12,6 @@ mcp = FastMCP(
 
 # 注册 tools
 mcp.tool()(data_tools.query_user_profile)
-mcp.tool()(data_tools.query_active_users)
-mcp.tool()(data_tools.query_db_stats)
 mcp.tool()(hello_tools.say_hello)
 mcp.tool()(hello_tools.server_info)
 
