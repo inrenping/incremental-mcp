@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -16,12 +16,18 @@ class JWTMiddleware(BaseHTTPMiddleware):
         path = request.url.path
 
         # 公开路由放行
-        if path in ("/", "/health") or path.startswith("/openapi") or path.startswith("/docs"):
+        if (
+            path in ("/", "/health")
+            or path.startswith("/openapi")
+            or path.startswith("/docs")
+        ):
             return await call_next(request)
 
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
-            return JSONResponse({"detail": "Missing or invalid Authorization header"}, status_code=401)
+            return JSONResponse(
+                {"detail": "Missing or invalid Authorization header"}, status_code=401
+            )
 
         token = auth[7:]
         try:
@@ -32,8 +38,8 @@ class JWTMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-@contextmanager
-def lifespan(app: FastAPI):
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """组合数据库连接校验与服务生命周期管理。"""
     init_db()
     try:
