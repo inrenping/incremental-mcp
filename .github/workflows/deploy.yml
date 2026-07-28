@@ -22,7 +22,7 @@ jobs:
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SECRET_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           envs: DATABASE_URL,SECRET_KEY,SUPABASE_STORAGE_BUCKET,SUPABASE_STORAGE_ENDPOINT,SUPABASE_STORAGE_REGION,SUPABASE_ACCESS_KEY_ID,SUPABASE_SECRET_ACCESS_KEY
           script: |
