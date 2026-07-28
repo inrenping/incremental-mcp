@@ -1,4 +1,4 @@
-from contextlib import asynccontextmanager
+from contextlib import contextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -32,14 +32,14 @@ class JWTMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """组合数据库连接校验与 MCP 自身的生命周期管理。"""
-    await init_db()
-    # 传入 mcp_app 本身以触发其内部 session 管理
-    async with mcp_app.lifespan(mcp_app):
+@contextmanager
+def lifespan(app: FastAPI):
+    """组合数据库连接校验与服务生命周期管理。"""
+    init_db()
+    try:
         yield
-    await close_db()
+    finally:
+        close_db()
 
 
 app = FastAPI(
