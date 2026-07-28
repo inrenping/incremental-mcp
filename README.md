@@ -40,18 +40,34 @@ app/
 复制 `.env.example` 为 `.env` 并填写实际值：
 
 | 变量 | 说明 |
-|---|---|
+| --- | --- |
 | `DATABASE_URL` | PostgreSQL 连接串（asyncpg 驱动） |
 | `SECRET_KEY` | JWT 签名密钥，需与主站一致 |
 | `JWT_ALGORITHM` | JWT 算法，默认 `HS256` |
 
+## GitHub Secrets 配置
+
+自动化部署通过 `.github/workflows/deploy.yml` 执行，需要在仓库的 **Settings → Secrets and variables → Actions** 中配置以下 secrets：
+
+| Secret | 用途 | 是否必填 |
+| --- | --- | --- |
+| `REMOTE_HOST` | 部署目标服务器的 IP 或域名 | 是 |
+| `REMOTE_USER` | SSH 登录用户名 | 是 |
+| `SECRET_KEY` | SSH 私钥；部署时也会写入 `.env` 作为 JWT 签名密钥 | 是 |
+| `DATABASE_URL` | PostgreSQL 连接串，部署时写入 `.env` | 是 |
+| `SUPABASE_STORAGE_BUCKET` | Supabase 存储桶名称 | 否（仅当使用对象存储） |
+| `SUPABASE_STORAGE_ENDPOINT` | Supabase S3 兼容端点 | 否（仅当使用对象存储） |
+| `SUPABASE_STORAGE_REGION` | Supabase 存储区域 | 否（仅当使用对象存储） |
+| `SUPABASE_ACCESS_KEY_ID` | Supabase 访问密钥 ID | 否（仅当使用对象存储） |
+| `SUPABASE_SECRET_ACCESS_KEY` | Supabase 私有访问密钥 | 否（仅当使用对象存储） |
+
+> **注意**：当前 `deploy.yml` 使用同一个 `SECRET_KEY` 既作为 SSH 私钥，又作为应用 JWT 密钥。建议将两者分离，例如 SSH 私钥使用 `SSH_PRIVATE_KEY`，应用密钥保留 `SECRET_KEY`。
+
 ## MCP Tools
 
 | Tool | 描述 |
-|---|---|
+| --- | --- |
 | `query_user_profile` | 获取当前登录用户的基本信息（用户名、邮箱、会员状态等） |
-| `query_active_users` | 列出所有已激活的用户 |
-| `query_db_stats` | 查询用户统计（总数、激活数、VIP 用户数） |
 
 ## 本地开发
 
@@ -66,13 +82,13 @@ cp .env.example .env
 # 编辑 .env 填写真实数据库连接和 SECRET_KEY
 
 # 启动服务
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
 # 运行冒烟测试
 python test_smoke.py
 ```
 
-MCP 端点：`http://localhost:8000/mcp`
+MCP 端点：`http://localhost:8001/mcp`
 
 ## 鉴权方式
 
@@ -111,16 +127,16 @@ ChatGPT 桌面端通过 `mcp-streamable-http-shim` 桥接到远程 HTTP MCP 服�
 
 ```bash
 docker build -t incremental-mcp .
-docker run -d --env-file .env -p 8000:8000 incremental-mcp
+docker run -d --env-file .env -p 8001:8001 incremental-mcp
 ```
 
 ### 反向代理
 
-在 nginx / Caddy 中配置反向代理，将 `/mcp` 路径指向服务端口 8000：
+在 nginx / Caddy 中配置反向代理，将 `/mcp` 路径指向服务端口 8001：
 
 ```nginx
 location /mcp {
-    proxy_pass http://127.0.0.1:8000/mcp;
+    proxy_pass http://127.0.0.1:8001/mcp;
     proxy_http_version 1.1;
     proxy_read_timeout 300s;       # MCP 长连接需要
     proxy_buffering off;           # SSE 流式传输

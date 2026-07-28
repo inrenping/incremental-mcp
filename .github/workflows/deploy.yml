@@ -1,0 +1,54 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          SUPABASE_STORAGE_BUCKET: ${{ secrets.SUPABASE_STORAGE_BUCKET }}
+          SUPABASE_STORAGE_ENDPOINT: ${{ secrets.SUPABASE_STORAGE_ENDPOINT }}
+          SUPABASE_STORAGE_REGION: ${{ secrets.SUPABASE_STORAGE_REGION }}
+          SUPABASE_ACCESS_KEY_ID: ${{ secrets.SUPABASE_ACCESS_KEY_ID }}
+          SUPABASE_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_SECRET_ACCESS_KEY }}
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          envs: DATABASE_URL,SECRET_KEY,SUPABASE_STORAGE_BUCKET,SUPABASE_STORAGE_ENDPOINT,SUPABASE_STORAGE_REGION,SUPABASE_ACCESS_KEY_ID,SUPABASE_SECRET_ACCESS_KEY
+          script: |
+            set -e
+            cd /var/www/incremental-mcp
+
+            echo ">>> 拉取最新代码..."
+            git pull origin main
+
+            echo ">>> 写入环境变量..."
+            cat <<EOF > .env
+            DATABASE_URL=${DATABASE_URL}
+            SECRET_KEY=${SECRET_KEY}
+            SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET}
+            SUPABASE_STORAGE_ENDPOINT=${SUPABASE_STORAGE_ENDPOINT}
+            SUPABASE_STORAGE_REGION=${SUPABASE_STORAGE_REGION}
+            SUPABASE_ACCESS_KEY_ID=${SUPABASE_ACCESS_KEY_ID}
+            SUPABASE_SECRET_ACCESS_KEY=${SUPABASE_SECRET_ACCESS_KEY}
+            EOF
+
+            echo ">>> 安装 Python 依赖..."
+            pip install -e .
+
+            echo ">>> 重启服务..."
+            systemctl restart incremental-mcp
+
+            echo ">>> 检查服务状态..."
+            sleep 2
+            systemctl status incremental-mcp --no-pager

@@ -1,0 +1,15 @@
+[Unit]
+Description=Incremental MCP Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/incremental-mcp
+ExecStart=/usr/local/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001 --log-level info
+Restart=always
+RestartSec=5
+EnvironmentFile=/var/www/incremental-mcp/.env
+
+[Install]
+WantedBy=multi-user.target
