@@ -84,6 +84,9 @@ cp .env.example .env
 # 启动服务
 uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
+# 查看运行日志
+journalctl -u incremental-mcp -n 50
+
 # 运行冒烟测试
 python test_smoke.py
 ```
