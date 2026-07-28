@@ -1,41 +1,52 @@
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import declarative_base
-from sqlalchemy import text
+from contextlib import contextmanager
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from app.config import settings
 
+
+def _normalize_psycopg2_url(url: str) -> str:
+    """把 postgresql+asyncpg:// 统一转成 postgresql+psycopg2://（或保持原 postgresql://）。"""
+    if url.startswith("postgresql+asyncpg://"):
+        return "postgresql://" + url[len("postgresql+asyncpg://"):]
+    return url
+
+
 Base = declarative_base()
 
-engine = create_async_engine(
-    settings.database_url,
+_engine = create_engine(
+    _normalize_psycopg2_url(settings.database_url),
     echo=settings.app_env == "development",
     future=True,
+    pool_pre_ping=True,
 )
 
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
+SessionLocal = sessionmaker(
+    bind=_engine,
+    class_=Session,
     expire_on_commit=False,
     autoflush=False,
     autocommit=False,
 )
 
 
-async def get_db() -> AsyncSession:
-    """获取数据库会话，用于 FastAPI Depends。"""
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+@contextmanager
+def get_db():
+    """获取数据库会话（上下文管理器，同步版本）。"""
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
-async def init_db() -> None:
+def init_db() -> None:
     """启动时验证数据库连接。"""
     try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-            await conn.commit()
+        with _engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            conn.commit()
     except Exception as exc:
         import logging
 
@@ -43,6 +54,6 @@ async def init_db() -> None:
         raise
 
 
-async def close_db() -> None:
+def close_db() -> None:
     """关闭数据库连接池。"""
-    await engine.dispose()
+    _engine.dispose()
