@@ -5,8 +5,9 @@ from app.tools import data_tools, hello_tools
 mcp = FastMCP(
     "Incremental MCP Server",
     instructions="""
-    这是一个为 i.incremental.icu 提供的 MCP 服务。
-    所有 tool 都需要通过 Authorization: Bearer <JWT> 进行身份验证。
+    这是一个为 incremental.icu 提供的 MCP 服务。
+    通过 OAuth 2.1 (Authorization Code + PKCE) 进行身份验证。
+    未认证的请求会返回 401 及 WWW-Authenticate 头以触发 OAuth discovery。
     """.strip(),
 )
 

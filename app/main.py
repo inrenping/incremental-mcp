@@ -8,9 +8,16 @@ from app.auth import decode_token
 from app.db import init_db, close_db
 from app.mcp_server import mcp_app
 
+# MCP OAuth discovery —— PRM 文档放在同一个域名的 blunt-serv 上
+PRM_URL = "https://incremental.icu/.well-known/oauth-protected-resource"
+
 
 class JWTMiddleware(BaseHTTPMiddleware):
-    """在 ASGI 层校验 Bearer JWT，保护包括 /mcp 在内的所有路由。"""
+    """在 ASGI 层校验 Bearer JWT。
+
+    未登录请求返回 401 + WWW-Authenticate，指向 PRM 元数据，
+    使 ChatGPT / OAuth 客户端可以自动发现并启动 OAuth 2.1 流程。
+    """
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -26,14 +33,24 @@ class JWTMiddleware(BaseHTTPMiddleware):
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
             return JSONResponse(
-                {"detail": "Missing or invalid Authorization header"}, status_code=401
+                {"detail": "Missing or invalid Authorization header"},
+                status_code=401,
+                headers={
+                    "WWW-Authenticate": f'Bearer resource_metadata="{PRM_URL}", scope="read"'
+                },
             )
 
         token = auth[7:]
         try:
             request.state.user = decode_token(token)
         except ValueError:
-            return JSONResponse({"detail": "Invalid or expired token"}, status_code=401)
+            return JSONResponse(
+                {"detail": "Invalid or expired token"},
+                status_code=401,
+                headers={
+                    "WWW-Authenticate": f'Bearer resource_metadata="{PRM_URL}", scope="read"'
+                },
+            )
 
         return await call_next(request)
 
@@ -46,6 +63,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         close_db()
+
 
 
 app = FastAPI(
@@ -68,5 +86,5 @@ async def health():
     return {"status": "ok"}
 
 
-# 将 MCP 服务挂载到 /mcp；生产环境通过反向代理暴露为 https://i.incremental.icu/mcp
+# 将 MCP 服务挂载到 /mcp；生产环境通过反向代理暴露为 https://incremental.icu/mcp
 app.mount("/mcp", mcp_app)
