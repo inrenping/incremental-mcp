@@ -6,6 +6,22 @@ from app.tools import data_tools, hello_tools
 
 # MCP 服务暴露给 OpenAI/ChatGPT 的 resource 标识，必须与 PRM 中的 resource 字段一致
 MCP_RESOURCE = "https://incremental.icu/mcp"
+# 授权服务器（blunt-serv）的 OAuth 元数据
+AUTH_SERVER = "https://incremental.icu"
+
+# 与 blunt-serv /.well-known/oauth-authorization-server 保持一致的元数据
+_AUTH_SERVER_METADATA = {
+    "issuer": AUTH_SERVER,
+    "authorization_endpoint": f"{AUTH_SERVER}/oauth/authorize",
+    "token_endpoint": f"{AUTH_SERVER}/oauth/token",
+    "registration_endpoint": f"{AUTH_SERVER}/oauth/register",
+    "registration_endpoint_auth_methods_supported": ["none"],
+    "response_types_supported": ["code"],
+    "code_challenge_methods_supported": ["S256"],
+    "token_endpoint_auth_methods_supported": ["none"],
+    "scopes_supported": ["read"],
+    "grant_types_supported": ["authorization_code", "refresh_token"],
+}
 
 mcp = FastMCP(
     "Incremental MCP Server",
@@ -39,6 +55,32 @@ async def protected_resource_metadata(request: Request) -> JSONResponse:
             "resource_documentation": "https://incremental.icu/docs",
         }
     )
+
+
+@mcp.custom_route("/.well-known/oauth-authorization-server", methods=["GET"])
+async def authorization_server_metadata(request: Request) -> JSONResponse:
+    """RFC 8414 授权服务器元数据 — 兼容 OpenAI 从 MCP URL 路径下发现 OAuth 配置。
+
+    部分客户端（如 ChatGPT 手动配置 Authorization server base = MCP Server URL 时）
+    会请求 {mcp_url}/.well-known/oauth-authorization-server，这里直接返回与
+    blunt-serv 一致的元数据。
+    """
+    return JSONResponse(_AUTH_SERVER_METADATA)
+
+
+@mcp.custom_route("/.well-known/openid-configuration", methods=["GET"])
+async def openid_configuration(request: Request) -> JSONResponse:
+    """OpenID Connect Discovery — 兼容 OpenAI 用 OIDC 方式发现 OAuth 配置。"""
+    meta = dict(_AUTH_SERVER_METADATA)
+    meta.update(
+        {
+            "subject_types_supported": ["public"],
+            "id_token_signing_alg_values_supported": ["RS256", "HS256"],
+            "claims_supported": ["sub"],
+            "response_modes_supported": ["query"],
+        }
+    )
+    return JSONResponse(meta)
 
 
 # 创建可挂载的 ASGI 应用，使用 streamable-http（MCP 当前推荐协议）
