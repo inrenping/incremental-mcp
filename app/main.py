@@ -6,10 +6,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.auth import decode_token
 from app.db import init_db, close_db
-from app.mcp_server import mcp_app
+from app.mcp_server import mcp_app, MCP_RESOURCE
 
-# MCP OAuth discovery —— PRM 文档放在同一个域名的 blunt-serv 上
-PRM_URL = "https://incremental.icu/.well-known/oauth-protected-resource"
+# MCP OAuth discovery —— PRM 托管在 MCP 服务自身（OpenAI 要求），
+# 通过 401 的 WWW-Authenticate 头告知客户端去 /mcp/.well-known/ 发现
+PRM_URL = f"{MCP_RESOURCE}/.well-known/oauth-protected-resource"
 
 
 class JWTMiddleware(BaseHTTPMiddleware):
@@ -22,11 +23,12 @@ class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
-        # 公开路由放行
+        # 公开路由放行（含 MCP 服务的 PRM 发现端点，OpenAI 需要匿名访问）
         if (
             path in ("/", "/health")
             or path.startswith("/openapi")
             or path.startswith("/docs")
+            or "/.well-known/" in path
         ):
             return await call_next(request)
 
