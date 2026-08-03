@@ -35,7 +35,6 @@ mcp = FastMCP(
 # 注册 tools
 mcp.tool()(data_tools.query_user_profile)
 mcp.tool()(hello_tools.say_hello)
-mcp.tool()(hello_tools.server_info)
 
 
 @mcp.custom_route("/.well-known/oauth-protected-resource", methods=["GET"])
