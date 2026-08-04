@@ -59,13 +59,13 @@ class JWTMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """组合数据库连接校验与服务生命周期管理。"""
+    """组合数据库连接校验与 MCP 服务生命周期管理。"""
     init_db()
-    try:
-        yield
-    finally:
-        close_db()
-
+    async with mcp_app.lifespan(app):
+        try:
+            yield
+        finally:
+            close_db()
 
 
 app = FastAPI(
