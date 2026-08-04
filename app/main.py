@@ -59,15 +59,13 @@ class JWTMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """组合数据库连接 + FastMCP StreamableHTTP lifespan。
-
-    FastMCP 3.x 在 streamable-http 模式下通过 mcp_app.lifespan 初始化
-    内部的 StreamableHTTPSessionManager 任务组，缺失会导致 502。
-    """
+    """组合数据库连接校验与服务生命周期管理。"""
     init_db()
-    async with mcp_app.lifespan(app):
+    try:
         yield
-    close_db()
+    finally:
+        close_db()
+
 
 
 app = FastAPI(

@@ -43,10 +43,3 @@ def say_hello() -> dict:
         }
 
 
-def server_info() -> dict:
-    """返回服务器基本信息。"""
-    return {
-        "service": "Incremental MCP Server",
-        "version": "0.1.0",
-        "description": "为 i.incremental.icu 提供的 MCP 服务",
-    }
