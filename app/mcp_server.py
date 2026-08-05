@@ -2,7 +2,7 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from app.tools import activity_tools, data_tools, hello_tools
+from app.tools import activity_tools, data_tools, heart_rate_tools, hello_tools
 
 # MCP 服务暴露给 OpenAI/ChatGPT 的 resource 标识，必须与 PRM 中的 resource 字段一致
 MCP_RESOURCE = "https://incremental.icu/mcp"
@@ -36,6 +36,8 @@ mcp = FastMCP(
 mcp.tool()(activity_tools.get_latest_run)
 mcp.tool()(activity_tools.get_run_history)
 mcp.tool()(data_tools.query_user_profile)
+mcp.tool()(heart_rate_tools.get_heart_rate_history)
+mcp.tool()(heart_rate_tools.get_daily_heart_rate)
 mcp.tool()(hello_tools.say_hello)
 
 

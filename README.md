@@ -31,10 +31,13 @@ app/
 ├── db.py                # async SQLAlchemy engine + session
 ├── models/
 │   ├── user.py              # t_users / t_user_refresh_tokens ORM 模型
-│   └── main_activity.py     # t_main_activity ORM 模型（跑步数据）
+│   ├── main_activity.py     # t_main_activity ORM 模型（跑步数据）
+│   ├── heart_rate_daily.py  # t_heart_rate_daily ORM 模型（每日心率汇总）
+│   └── heart_rate_detail.py # t_heart_rate_detail ORM 模型（心率采样明细）
 └── tools/
     ├── data_tools.py        # MCP tool 实现（用户信息）
     ├── activity_tools.py    # MCP tool 实现（跑步数据）
+    ├── heart_rate_tools.py  # MCP tool 实现（心率数据）
     └── hello_tools.py       # 示例 tool
 ```
 
@@ -72,6 +75,8 @@ app/
 | --- | --- |
 | `get_latest_run` | 获取当前用户最近一次跑步记录 |
 | `get_run_history` | 分页查询当前用户的历史跑步记录 |
+| `get_heart_rate_history` | 获取当前用户最近 N 天的每日心率汇总 |
+| `get_daily_heart_rate` | 获取当前用户指定日期的当天心率汇总与明细 |
 | `query_user_profile` | 获取当前登录用户的基本信息（用户名、邮箱、会员状态等） |
 
 ### 跑步数据工具
@@ -113,6 +118,71 @@ app/
 返回 `{"status": "success", "data": [...], "total": N}`。
 
 > 跑步类型过滤与后端一致：`running` / `treadmill_running` / `trail_running` / `track_running` / `indoor_running` 及 key `100`-`103`。
+
+### 心率数据工具
+
+心率数据直接查询 `t_heart_rate_daily` 与 `t_heart_rate_detail` 表（与主站 blunt-serv 共享同一 PostgreSQL）。
+
+**`get_heart_rate_history`**
+
+获取当前用户最近 N 天的每日心率汇总，按日期倒序：
+
+| 参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `days` | int | 7 | 返回最近多少天的记录 |
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "date": "2026-08-05",
+      "max_heart_rate": 80,
+      "min_heart_rate": 43,
+      "resting_heart_rate": 47,
+      "last_seven_days_avg_resting_heart_rate": 45
+    },
+    {
+      "date": "2026-08-04",
+      "max_heart_rate": 132,
+      "min_heart_rate": 42,
+      "resting_heart_rate": 46,
+      "last_seven_days_avg_resting_heart_rate": 45
+    }
+  ]
+}
+```
+
+**`get_daily_heart_rate`**
+
+获取当前用户指定日期的当天心率数据，包含每日汇总（`daily`）和心率明细（`details`）。明细按用户时区（`t_users.timezone`）计算当天的 UTC 起止范围，采样时间升序返回：
+
+| 参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `date` | str | 无（默认用户时区的今天） | 日期，格式 `YYYY-MM-DD` |
+
+```json
+{
+  "status": "success",
+  "data": {
+    "daily": {
+      "id": 28,
+      "user_id": 1,
+      "date": "2026-08-05",
+      "max_heart_rate": 80,
+      "min_heart_rate": 43,
+      "resting_heart_rate": 47,
+      "last_seven_days_avg_resting_heart_rate": 45,
+      "created_at": "2026-08-05T00:10:52.344570+00:00",
+      "updated_at": "2026-08-05T04:16:44.992412+00:00"
+    },
+    "details": [
+      { "sample_time": "2026-08-04T16:00:00+00:00", "heart_rate": 52 },
+      { "sample_time": "2026-08-04T16:02:00+00:00", "heart_rate": 53 }
+    ]
+  }
+}
+```
 
 ## 本地开发
 
