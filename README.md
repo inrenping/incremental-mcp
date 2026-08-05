@@ -30,9 +30,12 @@ app/
 ├── auth.py              # JWT 解码与用户 ID 提取
 ├── db.py                # async SQLAlchemy engine + session
 ├── models/
-│   └── user.py          # t_users / t_user_refresh_tokens ORM 模型
+│   ├── user.py              # t_users / t_user_refresh_tokens ORM 模型
+│   └── main_activity.py     # t_main_activity ORM 模型（跑步数据）
 └── tools/
-    └── data_tools.py    # MCP tool 实现
+    ├── data_tools.py        # MCP tool 实现（用户信息）
+    ├── activity_tools.py    # MCP tool 实现（跑步数据）
+    └── hello_tools.py       # 示例 tool
 ```
 
 ## 环境变量
@@ -67,7 +70,49 @@ app/
 
 | Tool | 描述 |
 | --- | --- |
+| `get_latest_run` | 获取当前用户最近一次跑步记录 |
+| `get_run_history` | 分页查询当前用户的历史跑步记录 |
 | `query_user_profile` | 获取当前登录用户的基本信息（用户名、邮箱、会员状态等） |
+
+### 跑步数据工具
+
+跑步数据直接查询 `t_main_activity` 表（与主站 blunt-serv 共享同一 PostgreSQL），不经过 FastAPI 转发。
+
+**`get_latest_run`**
+
+无参数，返回最近一条跑步记录的完整数据（距离、时长、心率、配速、爬升等）：
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 123,
+    "activity_name": "晨跑",
+    "sport_type_raw": "running",
+    "start_time_local": "2026-08-05T07:30:00",
+    "distance_meters": 5210.0,
+    "duration_seconds": 2100.0,
+    "average_hr": 152,
+    "max_hr": 178,
+    "...": "..."
+  }
+}
+```
+
+**`get_run_history`**
+
+分页查询历史跑步记录，按本地开始时间倒序：
+
+| 参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `limit` | int | 10 | 每页条数 |
+| `offset` | int | 0 | 跳过的条数 |
+| `start_date` | str | 无 | 起始日期过滤（本地时间），格式 `YYYY-MM-DD` |
+| `end_date` | str | 无 | 结束日期过滤（本地时间），格式 `YYYY-MM-DD` |
+
+返回 `{"status": "success", "data": [...], "total": N}`。
+
+> 跑步类型过滤与后端一致：`running` / `treadmill_running` / `trail_running` / `track_running` / `indoor_running` 及 key `100`-`103`。
 
 ## 本地开发
 
