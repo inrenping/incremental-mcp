@@ -41,6 +41,12 @@ mcp.tool()(heart_rate_tools.get_daily_heart_rate)
 mcp.tool()(hello_tools.say_hello)
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> JSONResponse:
+    """MCP 子应用健康检查端点，供外部监控服务（如 Better Stack）使用。"""
+    return JSONResponse({"status": "ok"})
+
+
 @mcp.custom_route("/.well-known/oauth-protected-resource", methods=["GET"])
 async def protected_resource_metadata(request: Request) -> JSONResponse:
     """RFC 9728 Protected Resource Metadata — 让 ChatGPT 发现授权服务器位置。

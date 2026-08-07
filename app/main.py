@@ -25,7 +25,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
 
         # 公开路由放行（含 MCP 服务的 PRM 发现端点，OpenAI 需要匿名访问）
         if (
-            path in ("/", "/health")
+            path in ("/", "/health", "/mcp/health")
             or path.startswith("/openapi")
             or path.startswith("/docs")
             or "/.well-known/" in path
