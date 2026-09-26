@@ -3,14 +3,44 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.auth import decode_token
 from app.db import init_db, close_db
 from app.mcp_server import mcp_app, MCP_RESOURCE
 
+# MCP 挂载路径
+MCP_MOUNT_PATH = "/mcp"
+
 # MCP OAuth discovery —— PRM 托管在 MCP 服务自身（OpenAI 要求），
 # 通过 401 的 WWW-Authenticate 头告知客户端去 /mcp/.well-known/ 发现
 PRM_URL = f"{MCP_RESOURCE}/.well-known/oauth-protected-resource"
+
+
+class MCPPathNormalizer:
+    """把不带尾斜杠的 /mcp 请求在路由前重写为 /mcp/。
+
+    Starlette 的 Mount 只匹配 "<mount>/..." 形式的路径，命中不到 "/mcp"，
+    于是上层 Router 会返回 307 重定向到 "/mcp/"。部分 MCP 客户端不跟随
+    POST 的 307，或在重定向时丢弃 Authorization 头，表现为 Unauthorized。
+
+    这里在路由之前统一路径，使 /mcp 与 /mcp/ 都由 MCP 子应用直接应答，
+    不再产生任何 3xx。
+    """
+
+    def __init__(self, app: ASGIApp, mount_path: str = MCP_MOUNT_PATH) -> None:
+        self.app = app
+        self.mount_path = mount_path
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            path = scope.get("path", "") or ""
+            if path.rstrip("/") == self.mount_path:
+                normalized = self.mount_path + "/"
+                scope = dict(scope)
+                scope["path"] = normalized
+                scope["raw_path"] = normalized.encode("latin-1")
+        await self.app(scope, receive, send)
 
 
 class JWTMiddleware(BaseHTTPMiddleware):
@@ -76,6 +106,9 @@ app = FastAPI(
 
 # 注意：中间件需要在 mount /mcp 之前注册，否则挂载的子应用不会经过它
 app.add_middleware(JWTMiddleware)
+# 该中间件必须最后注册 —— Starlette 中越晚添加的中间件越靠外，
+# 才能在路由匹配发生之前把 /mcp 规范成 /mcp/。
+app.add_middleware(MCPPathNormalizer)
 
 
 @app.get("/")
@@ -89,4 +122,5 @@ async def health():
 
 
 # 将 MCP 服务挂载到 /mcp；生产环境通过反向代理暴露为 https://incremental.icu/mcp
-app.mount("/mcp", mcp_app)
+# /mcp（不带尾斜杠）由 MCPPathNormalizer 规范路径后直连，不再 307 到 /mcp/
+app.mount(MCP_MOUNT_PATH, mcp_app)

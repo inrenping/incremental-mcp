@@ -2,10 +2,12 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from app.config import settings
 from app.tools import activity_tools, data_tools, heart_rate_tools, hello_tools
 
-# MCP 服务暴露给 OpenAI/ChatGPT 的 resource 标识，必须与 PRM 中的 resource 字段一致
-MCP_RESOURCE = "https://incremental.icu/mcp"
+# MCP 服务暴露给 OpenAI/ChatGPT 的 resource 标识，必须与 PRM 中的 resource 字段一致，
+# 并与 blunt-serv 签发的令牌 aud 一致（见 app.config.Settings.mcp_resource）。
+MCP_RESOURCE = settings.mcp_resource
 # 授权服务器（blunt-serv）的 OAuth 元数据
 AUTH_SERVER = "https://incremental.icu"
 
