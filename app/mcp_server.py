@@ -3,7 +3,13 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from app.config import settings
-from app.tools import activity_tools, data_tools, heart_rate_tools, hello_tools
+from app.tools import (
+    activity_tools,
+    data_tools,
+    heart_rate_tools,
+    hello_tools,
+    sleep_tools,
+)
 
 # MCP 服务暴露给 OpenAI/ChatGPT 的 resource 标识，必须与 PRM 中的 resource 字段一致，
 # 并与 blunt-serv 签发的令牌 aud 一致（见 app.config.Settings.mcp_resource）。
@@ -41,6 +47,8 @@ mcp.tool()(data_tools.query_user_profile)
 mcp.tool()(heart_rate_tools.get_heart_rate_history)
 mcp.tool()(heart_rate_tools.get_daily_heart_rate)
 mcp.tool()(hello_tools.say_hello)
+mcp.tool()(sleep_tools.get_sleep_history)
+mcp.tool()(sleep_tools.get_daily_sleep)
 
 
 @mcp.custom_route("/health", methods=["GET"])
